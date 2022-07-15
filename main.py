@@ -1,14 +1,19 @@
-import random
+from random import randint
 import pygame
-import math
-import csv
+from math import sin, cos, sqrt, pi
+from csv import writer
 
+# Settings
 randomFlag = True
 setWidths = [20, 60, 30, 50, 40, 30, 20, 50]
 setRadi = [100, 300, 200, 150, 250, 300, 150, 100]
 numberOfTargets = 12
+fullScreen = True
+windowSize = (800,800)
+sensitivity = 10# value greater than 1. Higher the number, the higher the sensitivity
+deadZone = 0.1 #value from 0 to 1
 
-
+# Globals
 targets = []
 pastTarget = 0
 targetWidth = 50
@@ -38,12 +43,15 @@ def draw_ring(surface):
     global setRadi
     x = []
     y = []
+    # Get angles around ring that targets will be placed at
     theta = [0]
     for i in range(0, numberOfTargets-1):
         theta.append(theta[i]+(360/numberOfTargets))
+
     centerx = pygame.display.get_window_size()[0]/2
     centery = pygame.display.get_window_size()[1]/2
 
+    # Algo for moving target around ring. Follows the movement shown in paper by I. MacKenzie
     if pastTarget <= numberOfTargets/2:
         if flag:
             if pastTarget <= (numberOfTargets-1)/2 :
@@ -57,35 +65,37 @@ def draw_ring(surface):
             pastTarget = pastTarget + 1
             flag = True
     else:
+        #reset targets and create new ring
         flag = True
         targets = []
 
         pastTarget = 0
         chosenTarget = 0
 
+        # If not set to random, use set widths and radi
         if randomFlag:
-            targetWidth = random.randint(20, 60)
-            radius = random.randint(100, 300)
+            targetWidth = randint(20, 60)
+            radius = randint(100, 300)
         else:
             if setCount >= len(setWidths):
                 setCount = 0
             targetWidth = setWidths[setCount]
             radius = setRadi[setCount]
             setCount = setCount +1
-
+    # calc x and y position based on angles generated
     for i in range(len(theta)):
-        x.append(centerx + radius * math.cos(theta[i] * math.pi / 180))
-        y.append(centery + radius * math.sin(theta[i] * math.pi / 180))
-
+        x.append(centerx + radius * cos(theta[i] * pi / 180))
+        y.append(centery + radius * sin(theta[i] * pi / 180))
+    # create targets
     for i in range(len(x)):
         targets.append(pygame.draw.circle(surface, (50, 50, 50), (x[i], y[i]), targetWidth))
-
+    # append chosen target at at end so that it is drawn last and on top of all other targets
     targets.append(pygame.draw.circle(surface, (200, 10, 10), (x[chosenTarget], y[chosenTarget]), targetWidth))
     pygame.display.flip()
 
     return targets[chosenTarget]
 
-
+# adds 10px border to window to prevent mouse exiting screen
 def stop_mouse(surface):
     if pygame.mouse.get_pos()[0] in range(0, 10): #left wall
         pygame.mouse.set_pos(11, pygame.mouse.get_pos()[1])
@@ -111,6 +121,7 @@ def stop_mouse(surface):
 #     return target
 
 
+# deals with button press's and checks if mouse is within chosen target
 def button_press(currentTarget):
     global targetWidth
     global pastTarget
@@ -130,7 +141,7 @@ def button_press(currentTarget):
         currentPos = (pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1])
         currentTarget = draw_ring(window)
 
-        distance = math.sqrt((lastPosition[0]-currentPos[0])**2+(lastPosition[1]-currentPos[1])**2)
+        distance = sqrt((lastPosition[0]-currentPos[0])**2+(lastPosition[1]-currentPos[1])**2)
         lastPosition = currentPos
 
         if pastTarget > 0:
@@ -146,57 +157,62 @@ def button_press(currentTarget):
 
     return currentTarget
 
-
+# game code
 pygame.init()
 
-stick = pygame.joystick.Joystick(0)
+if(pygame.joystick.get_count()>0):
+    stick = pygame.joystick.Joystick(0)
 
-pygame.event.pump()
-pygame.display.init()
-pygame.event.set_grab(True)
+    pygame.event.pump()
+    pygame.display.init()
+    pygame.event.set_grab(True)
+    if fullScreen:
+        window = pygame.display.set_mode((0,0), pygame.FULLSCREEN) # 0, 0, fullscreen
+    else:
+        window = pygame.display.set_mode(windowSize)
+    cursor = pygame.cursors.Cursor(pygame.SYSTEM_CURSOR_CROSSHAIR)
+    pygame.mouse.set_cursor(cursor)
 
-window = pygame.display.set_mode((900, 900 )) # 0, 0, fullscreen
-cursor = pygame.cursors.Cursor(pygame.SYSTEM_CURSOR_CROSSHAIR)
-pygame.mouse.set_cursor(cursor)
+    target = draw_ring(window)
 
-target = draw_ring(window)
+    going = True
 
-going = True
+    while going:
 
-while going:
+        event = pygame.event.poll()
 
-    event = pygame.event.poll()
+        if event.type == pygame.JOYBUTTONDOWN:
+            if stick.get_button(0):
+                target = button_press(target)
 
-    if event.type == pygame.JOYBUTTONDOWN:
-        if stick.get_button(0):
-            target = button_press(target)
+        elif event.type == pygame.JOYAXISMOTION:
+            while stick.get_axis(0) > deadZone or stick.get_axis(0) < -deadZone or stick.get_axis(1) > deadZone or stick.get_axis(1) < -deadZone: #0.1 is the deadzone im applying to deal with jitter
 
-    elif event.type == pygame.JOYAXISMOTION:
-        while stick.get_axis(0) > 0.1 or stick.get_axis(0) < -0.1 or stick.get_axis(1) > 0.1 or stick.get_axis(1) < -0.1: #0.1 is the deadzone im applying to deal with jitter
+                pygame.time.Clock().tick(90) #Forces code to run at 90fps. Keeps mouse from getting wildly sensative
 
-            pygame.time.Clock().tick(90)
+                pos = pygame.mouse.get_pos()
+                x = float(pos[0])
+                y = float(pos[1])
+                pygame.mouse.set_pos([round(x + stick.get_axis(0)*sensitivity), round(y + stick.get_axis(1)*sensitivity)])#Set_pos uses int's. this is awful. axis values are 0-1 and get rounded down.
+                stop_mouse(window)
+                if pygame.event.peek(pygame.JOYBUTTONDOWN):
+                    if stick.get_button(0):
+                        target = button_press(target)
+                        pygame.event.get()
+                        break
 
-            pos = pygame.mouse.get_pos()
-            x = float(pos[0])
-            y = float(pos[1])
-            pygame.mouse.set_pos([round(x + stick.get_axis(0)*10), round(y + stick.get_axis(1)*10)])#Set_pos uses int's. this is awful. axis values are 0-1 and get rounded down.
-            stop_mouse(window)
-            if pygame.event.peek(pygame.JOYBUTTONDOWN):
-                if stick.get_button(0):
-                    target = button_press(target)
-                    pygame.event.get()
-                    break
-
-    if event.type == pygame.QUIT:
-        going = False
-
-    elif event.type == pygame.KEYDOWN:
-        if event.key == pygame.K_ESCAPE:
+        if event.type == pygame.QUIT:
             going = False
 
-f = open('data.csv', 'w')
-writer = csv.writer(f)
-writer.writerow(["Time","Misses", "Width", "Distance"])
-writer.writerows(data)
-f.close()
-pygame.time.wait(10)
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                going = False
+
+    f = open('data.csv', 'w')
+    writer = writer(f)
+    writer.writerow(["Time","Misses", "Width", "Distance"])
+    writer.writerows(data)
+    f.close()
+    pygame.time.wait(10)
+else:
+    print("No Joysticks Found")
