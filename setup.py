@@ -8,9 +8,6 @@ root.title("Fitts's Law Setup")
 root.resizable(width = False, height = False)
 mainFrame = tk.Frame(root, width=800, height=250, bg = "light blue")
 
-
-
-
 #Bases
 userInfoFrame = tk.Frame(mainFrame, bg = "light blue")
 checkBoxFrame = tk.Frame(mainFrame, bg = "light blue")
@@ -28,15 +25,15 @@ controller = tk.StringVar()
 controller.set("Mouse")
 controllerLabel = tk.Label(userInfoFrame, text="Controller", bg = "light blue")
 sticks = main.game().get_joysticks()
-controllerDrop = tk.OptionMenu(userInfoFrame, controller, "Mouse", sticks)
+controllerDrop = tk.OptionMenu(userInfoFrame, controller, "Mouse", *sticks)
 
 #Variables
 numTargetsLabel = tk.Label(variableFrame, text="Number of Targets", bg = "light blue")
-numTargetsSpinner = tk.Spinbox(variableFrame, from_=2, to=50)
+numTargetsSpinner = tk.Spinbox(variableFrame, from_=2, to=20)
 sensitivityLabel = tk.Label(variableFrame, text="Sensitivity", bg = "light blue")
-sensitivitySpinner = tk.Spinbox(variableFrame, from_=1, to=50)
+sensitivitySpinner = tk.Spinbox(variableFrame, from_=1, to=20)
 deadZoneLabel = tk.Label(variableFrame, text="Dead Zone", bg = "light blue")
-deadZoneSpinner = tk.Spinbox(variableFrame, from_=1, to=10)
+deadZoneSpinner = tk.Spinbox(variableFrame, from_=0, to=99)
 
 #Check boxes
 randVar = tk.IntVar()
@@ -116,7 +113,7 @@ def begin():
         setWidths, setRadii = [], []
     numTargets = int(numTargetsSpinner.get())
     sensitivity = int(sensitivitySpinner.get())
-    deadZone = int(deadZoneSpinner.get()) / 10
+    deadZone = float(deadZoneSpinner.get()) / 10
     newGame = main.game(fullScreen, random, numTargets, sensitivity, deadZone, setWidths, setRadii, screenSize, joystick, name)
     if joystick == "Mouse":
         newGame.play_mouse()

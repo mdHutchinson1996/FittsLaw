@@ -3,6 +3,7 @@ from random import randint
 import pygame
 from math import sin, cos, sqrt, pi
 
+
 class game():
 
     def __init__(self, fullScreen=False, randomFlag=True, numberOfTargets=12, sensitivity=10, deadZone=0.1, setWidths = [], setRadii = [], windowSize = (800, 800), joystick ="Mouse", user = "Default"):
@@ -14,7 +15,7 @@ class game():
         self.fullScreen = fullScreen
         self.windowSize = windowSize
         self.sensitivity = sensitivity# value greater than 1. Higher the number, the higher the sensitivity
-        self.deadZone = deadZone #value from 0 to 1
+        self.deadZone = deadZone + 0.001 #value from 0 to 1
         self.joystick = joystick
         self.user = user
 
@@ -40,7 +41,7 @@ class game():
             for x in range(pygame.joystick.get_count()):
                 if pygame.joystick.Joystick(x).get_name == self.joystick:
                     stick=pygame.joystick.Joystick(x)
-                    break;
+                    break
 
             pygame.event.pump()
             pygame.display.init()
@@ -57,7 +58,7 @@ class game():
             going = True
 
             while going:
-
+                #pygame.time.Clock().tick(90) #Forces code to run at 90fps. Keeps mouse from getting wildly sensative
                 event = pygame.event.poll()
 
                 if event.type == pygame.JOYBUTTONDOWN:
@@ -65,23 +66,25 @@ class game():
                         target = self.button_press(target, window)
 
                 elif event.type == pygame.JOYAXISMOTION:
-                    while stick.get_axis(0) > self.deadZone or stick.get_axis(0) < -self.deadZone or stick.get_axis(1) > self.deadZone or stick.get_axis(1) < -self.deadZone: #0.1 is the deadzone im applying to deal with jitter
+                    if stick.get_axis(0) > self.deadZone or stick.get_axis(0) < -self.deadZone or stick.get_axis(1) > self.deadZone or stick.get_axis(1) < -self.deadZone: #0.1 is the deadzone im applying to deal with jitter
+                        #print(stick.get_axis(0))
+                        # print(stick.get_axis(1))
+                        # print("deadzone: ",self.deadZone)
 
-                        pygame.time.Clock().tick(90) #Forces code to run at 90fps. Keeps mouse from getting wildly sensative
-
+                        #pygame.time.Clock().tick(90) #Forces code to run at 90fps. Keeps mouse from getting wildly sensative
                         pos = pygame.mouse.get_pos()
                         x = float(pos[0])
                         y = float(pos[1])
                         #print(stick.get_axis(1))
                         pygame.mouse.set_pos([round(x + stick.get_axis(0)*self.sensitivity), round(y + stick.get_axis(1)*self.sensitivity)])#Set_pos uses int's. this is awful. axis values are 0-1 and get rounded down.
                         self.stop_mouse(window)
-                        if pygame.event.peek(pygame.JOYBUTTONDOWN):
-                            if stick.get_button(0):
-                                target = self.button_press(target, window)
-                                pygame.event.get()
-                                break
+                        # if pygame.event.peek(pygame.JOYBUTTONDOWN):
+                        #     if stick.get_button(0):
+                        #         target = self.button_press(target, window)
+                        #         pygame.event.get()
+                        #         break
 
-                if event.type == pygame.QUIT:
+                elif event.type == pygame.QUIT:
                     going = False
 
                 elif event.type == pygame.KEYDOWN:
@@ -96,14 +99,14 @@ class game():
             writer.writerows(self.data)
             f.close()
             pygame.time.wait(10)
-            pygame.quit()
+            pygame.display.quit()
         else:
             print("No Joysticks Found")
+            pygame.display.quit()
 
 
     def play_mouse(self):
         pygame.init()
-        stick = pygame.mouse
         pygame.event.pump()
         pygame.display.init()
         pygame.event.set_grab(True)
@@ -121,7 +124,7 @@ class game():
         while going:
 
             event = pygame.event.poll()
-            if event.type == pygame.MOUSEBUTTONDOWN or event.type == pygame.MOUSEBUTTONUP:
+            if event.type == pygame.MOUSEBUTTONUP:
                 target = self.button_press(target, window)
 
             elif event.type == pygame.MOUSEMOTION:
@@ -142,7 +145,7 @@ class game():
         writer.writerows(self.data)
         f.close()
         pygame.time.wait(10)
-        pygame.quit()
+        pygame.display.quit()
 
 
     def draw_ring(self, surface):
@@ -259,4 +262,5 @@ class game():
 
 if __name__ == '__main__':
     game = game()
-    print("after game")
+    game.play_mouse()
+    #print("after game")
